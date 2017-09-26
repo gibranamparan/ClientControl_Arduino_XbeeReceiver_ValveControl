@@ -8,6 +8,11 @@ int GPMM = 60;
 int servoDegrees = 0;
 int autoControl = 0;
 
+int GPMr = 0;
+int GPMMr = 0;
+int servoDegreesr = 0;
+int autoControlr = 0;
+
 float res = 0;
 int grados=90;
 int propFactor = 1;
@@ -33,17 +38,24 @@ void loop() {
     
     //Se reciben informacion del webserver por xbee
     char readChar = Serial.read();
-    Serial.println("beginToRead:"+readChar);
-    //if(readChar == '{'){
-      GPM = recibirPorByte(); //Se recibe las Gotas por minuto objetivo
-      GPMM = recibirPorByte();//Se recibe la medicion recibida por el servidor
-      servoDegrees = recibirPorByte();//Se recibe la medicion recibida por el servidor
-      autoControl = recibirPorByte();//Se recibe la medicion recibida por el servidor
-    //}
+    //Serial.println("beginToRead:"+readChar);
+    if(readChar == '{'){
+      GPMr = recibirPorByte(); //Se recibe las Gotas por minuto objetivo
+      GPMMr = recibirPorByte();//Se recibe la medicion recibida por el servidor
+      servoDegreesr = recibirPorByte();//Se recibe la medicion recibida por el servidor
+      autoControlr = recibirPorByte();//Se recibe la medicion recibida por el servidor
+    }
+    
+    if(GPMr>=0 && GPMMr>=0 && (servoDegreesr>=10 && servoDegrees<=170) && (autoControlr==0 || autoControlr==1) ){
+      GPM = GPMr;
+      GPMM =GPMMr;
+      servoDegrees =servoDegreesr;
+      autoControl =autoControlr;
+    }
     
     //Serial.print("GPMM Rec ");
     //Serial.println(GPMM);
-    if(GPMM<=0 || GPMM > 90){ //Se evita guardar mediciones que sobrepasan los rangos permitidos
+    if(GPMM<0 || GPMM > 90){ //Se evita guardar mediciones que sobrepasan los rangos permitidos
       GPMM = GPMMAnterior;
     }
     //Resta de comparación entre deseado y medido
@@ -51,7 +63,7 @@ void loop() {
   }//fin de while que recibe los datos
   
   
-  if(automatico){ //Control automatico
+  if(autoControl == 1){ //Control automatico
     /*Algoritmo para calcular el movimiento proporcional a la distancia para hacer correccion*/
     propFactor = (1+ceil(abs(res)/5)); //Factor de proporcional para ordenar el giro de la valcula
     if(grados-propFactor>=0 || grados+propFactor<=180){
@@ -64,16 +76,18 @@ void loop() {
         grados=grados-propFactor;
       }
     }
-  }else{ //Control manual
     //Codigo de prueba, mueve motor de 10 en 10
-    grados=grados + signo*10;
+    /*grados=grados + signo*10;
     if(grados>=170 || grados<=10){ //Si llega al tope, cambia de sentido
       signo = signo*-1;
-    }
+    }*/
+  }else if(autoControl == 0){ //Control manual
+    //Codigo de prueba, mueve motor de 10 en 10
+    grados=servoDegrees;
   }
   
   /*******ALGORITMO DE CALIBRACION DE GPM AUTOMATICA************/
-  Serial.println("GPM "+String(GPM)+" | GPMM "+String(GPMM)+" | servoDegrees "+String(servoDegrees)+" | autoControl "+String(autoControl)+" | RES "+String(res)+" | Grados "+String(grados));
+  Serial.println("GPM "+String(GPM)+" | servoDegrees "+String(servoDegrees)+" | autoControl "+String(autoControl)+" | GPMM "+String(GPMM)+" | RES "+String(res)+" | Grados "+String(grados));
   
   servo.write(grados);
   delay(400);
